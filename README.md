@@ -16,9 +16,9 @@ The **Encoding Insight** is a comprehensive library designed for detecting chara
 ### Basic Usage Example
 
 ```java
-import io.barhan.encoding.insight.core.api.DetectionResult;
-import io.barhan.encoding.insight.core.api.EncodingInsight;
-import io.barhan.encoding.insight.core.detector.EncodingDetector;
+import api.core.io.github.barhan44.encoding.insight.DetectionResult;
+import api.core.io.github.barhan44.encoding.insight.EncodingInsight;
+import detector.core.io.github.barhan44.encoding.insight.EncodingDetector;
 
 import java.io.File;
 import java.io.InputStream;
@@ -31,8 +31,9 @@ EncodingDetector detector = EncodingInsight.getDefaultDetector();
 DetectionResult result = detector.detect(new File("example.txt"));
 
 // Detect encoding from InputStream
-try(InputStream input = Files.newInputStream(Paths.get("example.txt"))) {
-    DetectionResult result = detector.detect(input);
+try(
+InputStream input = Files.newInputStream(Paths.get("example.txt"))){
+DetectionResult result = detector.detect(input);
 }
 ```
 
@@ -48,15 +49,15 @@ try(InputStream input = Files.newInputStream(Paths.get("example.txt"))) {
 ### Customizing the Detector (in development)
 
 ```java
-import io.barhan.encoding.insight.configuration.DefaultConfiguration;
-import io.barhan.encoding.insight.core.api.EncodingInsight;
-import io.barhan.encoding.insight.core.detector.EncodingDetector;
-import io.barhan.encoding.insight.core.detector.impl.UTF8EncodingDetector;
-import io.barhan.encoding.insight.core.optimization.impl.DefaultOptimizationOptions;
-import io.barhan.encoding.insight.core.strategy.impl.UTF8DetectionStrategy;
+
+import api.core.io.github.barhan44.encoding.insight.EncodingInsight;
+import detector.core.io.github.barhan44.encoding.insight.EncodingDetector;
+import impl.detector.core.io.github.barhan44.encoding.insight.UTF8EncodingDetector;
+import impl.optimization.core.io.github.barhan44.encoding.insight.DefaultOptimizationOptions;
+import io.github.barhan44.encoding.insight.core.strategy.impl.UTF8DetectionStrategy;
 
 EncodingDetector detector = EncodingInsight.getDetector(
-        new DefaultConfiguration(),
+        new io.github.barhan44.encoding.insight.configuration.DefaultConfiguration(),
         new UTF8DetectionStrategy(),
         new DefaultOptimizationOptions(),
         UTF8EncodingDetector.class
