@@ -54,11 +54,12 @@ import api.core.io.github.barhan44.encoding.insight.EncodingInsight;
 import detector.core.io.github.barhan44.encoding.insight.EncodingDetector;
 import impl.detector.core.io.github.barhan44.encoding.insight.UTF8EncodingDetector;
 import impl.optimization.core.io.github.barhan44.encoding.insight.DefaultOptimizationOptions;
+import io.github.barhan44.encoding.insight.core.strategy.impl.DefaultDetectionStrategy;
 import io.github.barhan44.encoding.insight.core.strategy.impl.UTF8DetectionStrategy;
 
 EncodingDetector detector = EncodingInsight.getDetector(
         new io.github.barhan44.encoding.insight.configuration.DefaultConfiguration(),
-        new UTF8DetectionStrategy(),
+        new DefaultDetectionStrategy(),
         new DefaultOptimizationOptions(),
         UTF8EncodingDetector.class
 );

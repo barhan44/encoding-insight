@@ -2,36 +2,31 @@ package io.github.barhan44.encoding.insight.core.detector;
 
 import io.github.barhan44.encoding.insight.configuration.Configuration;
 import io.github.barhan44.encoding.insight.core.api.DetectionResult;
-import io.github.barhan44.encoding.insight.core.optimization.OptimizationOptions;
 import io.github.barhan44.encoding.insight.core.strategy.DetectionStrategy;
+import io.github.barhan44.encoding.insight.core.strategy.impl.DefaultDetectionStrategy;
 
 import java.io.*;
 
 public abstract class AbstractEncodingDetector implements EncodingDetector {
     protected final Configuration configuration;
     protected final DetectionStrategy strategy;
-    protected final OptimizationOptions options;
 
-    protected AbstractEncodingDetector(Configuration configuration, DetectionStrategy strategy, OptimizationOptions options) {
+    protected AbstractEncodingDetector(Configuration configuration, DetectionStrategy strategy) {
         this.configuration = configuration;
         this.strategy = strategy;
-        this.options = options;
     }
 
-    public static EncodingDetector createDetector(Configuration configuration, DetectionStrategy strategy, OptimizationOptions options, Class<? extends AbstractEncodingDetector> detectorType) {
-        try {
-            return detectorType
-                    .getConstructor(Configuration.class, DetectionStrategy.class, OptimizationOptions.class)
-                    .newInstance(configuration, strategy, options);
-        } catch (Exception e) {
-            throw new IllegalStateException("Detector creation error", e);
-        }
+    protected AbstractEncodingDetector(Configuration configuration) {
+        this(configuration, new DefaultDetectionStrategy());
     }
 
-    protected abstract DetectionResult performDetection(byte[] data);
+    protected DetectionResult performDetection(byte[] data) {
+        return strategy.detect(data);
+    }
 
     @Override
     public DetectionResult detect(File file) {
+        if (file == null) return null;
         try (InputStream input = new FileInputStream(file)) {
             byte[] data = readInputStream(input);
             return performDetection(data);

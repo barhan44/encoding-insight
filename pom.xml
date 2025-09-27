@@ -4,7 +4,7 @@
 
   <groupId>io.github.barhan44</groupId>
   <artifactId>encoding-insight</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.0.2-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>encoding-insight</name>

@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class UTF8DetectionStrategyTest {
+class DefaultDetectionStrategyTest {
     public static final byte[] UTF8_WITH_BOM = new byte[] {
             (byte) 0xEF, (byte) 0xBB, (byte) 0xBF,
             (byte) 0x48, (byte) 0x65, (byte) 0x6C, (byte) 0x6C, (byte) 0x6F // Hello
@@ -30,11 +30,11 @@ class UTF8DetectionStrategyTest {
             (byte) 0xC3 // Неполная последовательность
     };
 
-    private UTF8DetectionStrategy strategy;
+    private DefaultDetectionStrategy strategy;
 
     @BeforeEach
     void setUp() {
-        strategy = new UTF8DetectionStrategy();
+        strategy = new DefaultDetectionStrategy();
     }
 
     @Test
