@@ -2,68 +2,95 @@
 
 ## Overview
 
-The **Encoding Insight** is a comprehensive library designed for detecting character encodings in text files. It provides a flexible and extensible mechanism for encoding detection with support for various strategies and optimizations.
+A modular Java library for detecting character encodings in byte streams and files, with primary support for UTF-8 and
+Windows-1251 encodings. Designed with extensibility, clarity, and ease of use in mind.
+
+***
 
 ## Key Features
-- **Modular Architecture**: Easily add new detection strategies
-- **Flexible Configuration**: Customize settings via the Configuration interface
-- **Performance Optimization**: Supports result caching
-- **Extensibility**: Create custom detection strategies
-- **Ease of Use**: Convenient Builder pattern for detector creation
 
-## Getting Started
+- Accurate detection of UTF-8 and Windows-1251 encodings.
+- Composite detector allowing multiple encoding detection strategies.
+- Factory pattern to easily add or customize detectors.
+- Lightweight and modular architecture separating core detection logic from API.
+- Utilities to help read files and convert encoding.
+- Confidence levels returned with detection results.
+- Fully tested with unit and integration tests.
+- Simple, intuitive API facade for quick integration.
 
-### Basic Usage Example
+## Project Structure
+
+- **Core Module** (`encoding-insight-core`):
+  Contains detection algorithms, detector interfaces, and core data models.
+- **API Module** (`encoding-insight-api`):
+  Provides facade classes, services, and utilities for easier usage.
+
+## Quick Start
+
+### Maven Dependency
+
+(Add the built artifact to your project dependencies or install locally.)
+
+### Usage Example
 
 ```java
-import api.core.io.github.barhan44.encoding.insight.DetectionResult;
-import api.core.io.github.barhan44.encoding.insight.EncodingInsight;
-import detector.core.io.github.barhan44.encoding.insight.EncodingDetector;
+import io.github.barhan44.api.EncodingInsight;
+import io.github.barhan44.api.EncodingDetectionService;
+import io.github.barhan44.core.model.EncodingDetectionResult;
 
-import java.io.File;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+public class Main {
+    public static void main(String[] args) throws Exception {
+        EncodingInsight library = new EncodingInsight();
+        EncodingDetectionService service = library.getDetectionService();
 
-EncodingDetector detector = EncodingInsight.getDefaultDetector();
-
-// Detect encoding from file
-DetectionResult result = detector.detect(new File("example.txt"));
-
-// Detect encoding from InputStream
-try(
-InputStream input = Files.newInputStream(Paths.get("example.txt"))){
-DetectionResult result = detector.detect(input);
+        DetectionResult result = service.detectFile("example.txt");
+        if (result != null) {
+            System.out.println("Detected encoding: " + result.getEncoding() +
+                               " with confidence: " + result.getConfidence() + "%");
+        } else {
+            System.out.println("Encoding could not be determined.");
+        }
+    }
 }
 ```
 
-## Core Components
-- **EncodingDetector** — main interface for encoding detection
-- **DetectionStrategy** — defines the encoding detection strategy
-- **Configuration** — detector configuration settings
-- **OptimizationOptions** — optimization options
-- **DetectionResult** — detection result object
+***
 
-## Advanced Features
+## Adding Custom Detectors
 
-### Customizing the Detector (in development)
+Use the `EncodingDetectorFactory` to register and create custom encodings:
 
 ```java
+EncodingDetectorFactory factory = EncodingDetectorFactory.getInstance();
+factory.registerDetector("Custom-Encoding", CustomEncodingDetector.class);
 
-import api.core.io.github.barhan44.encoding.insight.EncodingInsight;
-import detector.core.io.github.barhan44.encoding.insight.EncodingDetector;
-import impl.detector.core.io.github.barhan44.encoding.insight.UTF8EncodingDetector;
-import impl.optimization.core.io.github.barhan44.encoding.insight.DefaultOptimizationOptions;
-import io.github.barhan44.encoding.insight.core.strategy.impl.DefaultDetectionStrategy;
-import io.github.barhan44.encoding.insight.core.strategy.impl.UTF8DetectionStrategy;
-
-EncodingDetector detector = EncodingInsight.getDetector(
-        new io.github.barhan44.encoding.insight.configuration.DefaultConfiguration(),
-        new DefaultDetectionStrategy(),
-        new DefaultOptimizationOptions(),
-        UTF8EncodingDetector.class
-);
+EncodingDetector customDetector = factory.createDetector("Custom-Encoding");
 ```
+
+***
+
+## Contributing
+
+Contributions are welcome! Please follow standard open-source contribution practices:
+
+- Fork the repository.
+- Create a feature branch.
+- Commit your changes with clear messages.
+- Submit a pull request.
+
+***
+
+## Testing
+
+Run tests using Maven:
+
+```bash
+mvn clean test
+```
+
+Includes both unit and integration tests covering detection accuracy and API functionality.
+
+***
 
 ## Documentation
 
@@ -71,4 +98,8 @@ Full documentation is available in the JavaDoc generated from source code commen
 
 ## License
 
-The library is distributed under the **MIT License**.
+The library is distributed under the **MIT License**. See LICENSE file for details.
+
+***
+
+This library provides a robust foundation for encoding detection in Java applications, enabling easier handling of text files with varied character encodings.
