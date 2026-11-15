@@ -1,57 +1,89 @@
 package io.github.barhan44.utils;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Objects;
 
 /**
  * Utility class for file operations, specifically for reading file contents as byte arrays.
  * <p>
- * Provides methods to read bytes from files or file paths with a maximum byte limit,
- * which is useful for sampling the beginning of files for tasks such as encoding detection.
- * This class is designed to be thread-safe and stateless.
+ * Provides methods to read at most a given number of bytes from a file, which is useful
+ * for sampling the beginning of files for tasks such as encoding detection. Only the
+ * requested number of bytes is read from disk; the whole file is never loaded into
+ * memory when a smaller limit is given. The stream is always closed.
+ * </p>
+ * <p>
+ * This class is stateless and thread-safe.
  * </p>
  * <p>
  * Usage example:
  * <pre>
  * byte[] data = FileUtils.readFileBytes("path/to/file.txt", 8192);
  * </pre>
- * <p>
- * Note: This class does not handle character decoding or encoding conversion,
- * it only provides raw byte data from files.
  */
 public class FileUtils {
+
+    private static final int DEFAULT_BUFFER_SIZE = 8192;
+
     private FileUtils() {
     }
 
     /**
-     * Reads up to maxBytes bytes from the file specified by the path string.
+     * Reads up to {@code maxBytes} bytes from the file specified by the path string.
      *
      * @param path     the string path of the file to read
-     * @param maxBytes the maximum number of bytes to read from the file
-     * @return a byte array containing up to maxBytes bytes from the beginning of the file
-     * @throws IOException if an I/O error occurs reading the file
+     * @param maxBytes the maximum number of bytes to read from the file (must be non-negative)
+     * @return a byte array containing up to {@code maxBytes} bytes from the beginning of the file
+     * @throws IOException              if an I/O error occurs reading the file
+     * @throws IllegalArgumentException if {@code maxBytes} is negative
      */
     public static byte[] readFileBytes(String path, int maxBytes) throws IOException {
+        Objects.requireNonNull(path, "path");
         return readFileBytes(Paths.get(path), maxBytes);
     }
 
     /**
-     * Reads up to maxBytes bytes from the file specified by the Path object.
+     * Reads up to {@code maxBytes} bytes from the file specified by the Path object.
+     * <p>
+     * Only {@code maxBytes} bytes are read from the stream; the file is not read in full
+     * when it is larger than the limit.
+     * </p>
      *
      * @param path     the Path object representing the file to read
-     * @param maxBytes the maximum number of bytes to read from the file
-     * @return a byte array containing up to maxBytes bytes from the beginning of the file
-     * @throws IOException if an I/O error occurs reading the file
+     * @param maxBytes the maximum number of bytes to read from the file (must be non-negative)
+     * @return a byte array containing up to {@code maxBytes} bytes from the beginning of the file
+     * @throws IOException              if an I/O error occurs reading the file
+     * @throws IllegalArgumentException if {@code maxBytes} is negative
      */
     public static byte[] readFileBytes(Path path, int maxBytes) throws IOException {
-        byte[] allBytes = Files.readAllBytes(path);
-        if (allBytes.length <= maxBytes) {
-            return allBytes;
+        Objects.requireNonNull(path, "path");
+        if (maxBytes < 0) {
+            throw new IllegalArgumentException("maxBytes must not be negative: " + maxBytes);
         }
-        byte[] result = new byte[maxBytes];
-        System.arraycopy(allBytes, 0, result, 0, maxBytes);
-        return result;
+        if (maxBytes == 0) {
+            return new byte[0];
+        }
+
+        try (InputStream input = Files.newInputStream(path)) {
+            int bufferSize = Math.min(maxBytes, DEFAULT_BUFFER_SIZE);
+            ByteArrayOutputStream output = new ByteArrayOutputStream(bufferSize);
+            byte[] buffer = new byte[bufferSize];
+            int remaining = maxBytes;
+
+            while (remaining > 0) {
+                int read = input.read(buffer, 0, Math.min(buffer.length, remaining));
+                if (read == -1) {
+                    break;
+                }
+                output.write(buffer, 0, read);
+                remaining -= read;
+            }
+
+            return output.toByteArray();
+        }
     }
 }

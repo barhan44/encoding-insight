@@ -22,6 +22,15 @@ class EncodingDetectorFactoryTest {
     }
 
     @Test
+    void testCp1251AliasIsRegistered() {
+        EncodingDetectorFactory factory = EncodingDetectorFactory.getInstance();
+        EncodingDetector cp1251 = factory.createDetector("CP1251");
+
+        assertNotNull(cp1251);
+        assertEquals("Windows-1251 Detector", cp1251.getName());
+    }
+
+    @Test
     void testRegisterCustomDetector() {
         EncodingDetectorFactory factory = EncodingDetectorFactory.getInstance();
         factory.registerDetector("Dummy", DummyDetector.class);

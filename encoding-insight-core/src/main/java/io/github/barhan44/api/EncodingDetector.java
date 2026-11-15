@@ -21,7 +21,7 @@ public interface EncodingDetector {
      * Attempts to detect the encoding of the given byte array data.
      *
      * @param data the byte array to analyze
-     * @return an DetectionResult describing the detected encoding and confidence,
+     * @return a DetectionResult describing the detected encoding and confidence,
      * or null if detection failed
      */
     DetectionResult detect(byte[] data);

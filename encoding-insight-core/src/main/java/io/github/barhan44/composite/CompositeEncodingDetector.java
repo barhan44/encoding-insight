@@ -5,6 +5,8 @@ import io.github.barhan44.model.DetectionResult;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Composite detector that aggregates multiple encoding detectors.
@@ -17,6 +19,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * Thread-safe implementation allows concurrent modifications.
  */
 public class CompositeEncodingDetector implements EncodingDetector {
+
+    private static final Logger LOGGER = Logger.getLogger(CompositeEncodingDetector.class.getName());
 
     private final List<EncodingDetector> detectors = new CopyOnWriteArrayList<>();
     private final String name;
@@ -121,7 +125,8 @@ public class CompositeEncodingDetector implements EncodingDetector {
                     results.add(result);
                 }
             } catch (Exception e) {
-                System.err.printf("Detector %s failed: %s%n", detector.getName(), e.getMessage());
+                LOGGER.log(Level.WARNING,
+                        "Detector " + detector.getName() + " failed: " + e.getMessage(), e);
             }
         }
 

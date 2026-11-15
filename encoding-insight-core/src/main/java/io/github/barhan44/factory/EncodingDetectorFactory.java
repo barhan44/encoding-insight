@@ -4,25 +4,32 @@ import io.github.barhan44.api.EncodingDetector;
 import io.github.barhan44.impl.UTF8EncodingDetector;
 import io.github.barhan44.impl.Win1251EncodingDetector;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Factory class responsible for creating encoding detector instances.
  * <p>
  * Implements the singleton pattern to ensure a single factory instance.
  * Supports registration of detector classes by name and creation of detectors.
+ * The registry is backed by a {@link ConcurrentHashMap} and may be read and
+ * modified concurrently; registration is intended to happen during application
+ * startup.
  * </p>
  * <p>
  * Uses the registry pattern to manage available detector classes dynamically.
+ * Detector classes must declare a public no-argument constructor, which is used
+ * by {@link #createDetector(String)}.
  */
 public class EncodingDetectorFactory {
     private static final EncodingDetectorFactory INSTANCE = new EncodingDetectorFactory();
 
-    // Thread-safe map of detector name to detector class
-    private final Map<String, Class<? extends EncodingDetector>> detectorsClasses = new HashMap<>();
+    // Thread-safe registry of detector name to detector class
+    private final Map<String, Class<? extends EncodingDetector>> detectorsClasses =
+            new ConcurrentHashMap<>();
 
     // Private constructor for singleton
     private EncodingDetectorFactory() {
@@ -49,19 +56,21 @@ public class EncodingDetectorFactory {
 
         try {
             return clazz.getDeclaredConstructor().newInstance();
-        } catch (Exception e) {
+        } catch (ReflectiveOperationException e) {
             throw new RuntimeException("Failed to create detector: " + name, e);
         }
     }
 
     /**
-     * Registers a new detector class with a unique name.
+     * Registers a new detector class with a unique name. The class must implement
+     * {@link EncodingDetector} and provide a public no-argument constructor.
      *
      * @param name          Unique name for detector
      * @param detectorClass Class reference implementing EncodingDetector
      */
     public void registerDetector(String name, Class<? extends EncodingDetector> detectorClass) {
-        detectorsClasses.put(name, detectorClass);
+        detectorsClasses.put(Objects.requireNonNull(name, "name"),
+                Objects.requireNonNull(detectorClass, "detectorClass"));
     }
 
 
@@ -75,10 +84,11 @@ public class EncodingDetectorFactory {
     }
 
     /**
-     * Registers default detectors, such as UTF-8 and Windows-1251.
+     * Registers default detectors: UTF-8 and Windows-1251, including the CP1251 alias.
      */
     private void registerDefaultDetectors() {
         registerDetector("UTF-8", UTF8EncodingDetector.class);
         registerDetector("Windows-1251", Win1251EncodingDetector.class);
+        registerDetector("CP1251", Win1251EncodingDetector.class);
     }
 }

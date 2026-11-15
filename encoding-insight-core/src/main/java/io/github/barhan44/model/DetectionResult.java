@@ -16,7 +16,7 @@ public class DetectionResult {
     private final String detectorName;
 
     /**
-     * Constructs an EncodingDetectionResult.
+     * Creates a new detection result.
      *
      * @param encoding     the name of the detected encoding (e.g., "UTF-8", "Windows-1251")
      * @param confidence   an integer confidence level in the range 0–100

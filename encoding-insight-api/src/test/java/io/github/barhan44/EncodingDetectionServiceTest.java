@@ -5,6 +5,7 @@ import io.github.barhan44.factory.EncodingDetectorFactory;
 import io.github.barhan44.model.DetectionResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -16,6 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class EncodingDetectionServiceTest {
+
+    @TempDir
+    Path tempDir;
 
     private EncodingDetectionService service;
 
@@ -30,14 +34,12 @@ class EncodingDetectionServiceTest {
 
     @Test
     void testDetectFromFile() throws IOException {
-        Path tempFile = Files.createTempFile("testUTF8", ".txt");
+        Path tempFile = tempDir.resolve("testUTF8.txt");
         Files.write(tempFile, "Test data...".getBytes(StandardCharsets.UTF_8));
 
         DetectionResult result = service.detectFile(tempFile);
         assertNotNull(result);
         assertEquals("UTF-8", result.getEncoding());
-
-        Files.delete(tempFile);
     }
 
     @Test

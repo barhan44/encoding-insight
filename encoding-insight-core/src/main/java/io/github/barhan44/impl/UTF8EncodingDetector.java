@@ -4,7 +4,7 @@ import io.github.barhan44.base.AbstractEncodingDetector;
 import io.github.barhan44.model.DetectionResult;
 
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
@@ -12,15 +12,24 @@ import java.nio.charset.StandardCharsets;
 /**
  * Detector for UTF-8 encoding.
  * <p>
- * Uses multiple strategies including BOM detection, sequence validation,
- * statistical analysis of ASCII vs multibyte characters,
- * and CharsetDecoder validation.
- * </p>
+ * The detector combines several checks:
+ * <ul>
+ *   <li>a UTF-8 byte order mark (BOM) yields maximum confidence, but only after the
+ *       remaining payload has also been validated as well-formed UTF-8;</li>
+ *   <li>without a BOM, confidence is accumulated from UTF-8 sequence validation,
+ *       ASCII vs. multibyte statistics and a strict {@link CharsetDecoder} pass;</li>
+ *   <li>an input scoring below the internal threshold is reported as undetectable
+ *       ({@code null}) instead of being guessed.</li>
+ * </ul>
+ * The detector has no mutable state and is safe for concurrent use.
  */
 public class UTF8EncodingDetector extends AbstractEncodingDetector {
 
     private static final byte[] UTF8_BOM = { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF };
     private static final int MIN_CONFIDENCE_THRESHOLD = 60;
+    private static final int BOM_CONFIDENCE = 100;
+    private static final int SEQUENCE_MAX_CONFIDENCE = 40;
+    private static final int DECODER_CONFIDENCE = 30;
 
     public UTF8EncodingDetector() {
         super("UTF-8 Detector", new String[] { "UTF-8" });
@@ -33,16 +42,15 @@ public class UTF8EncodingDetector extends AbstractEncodingDetector {
 
     @Override
     protected DetectionResult performDetection(byte[] data) {
-
-        int confidence = 0;
-
         if (hasBom(data)) {
-            return new DetectionResult("UTF-8", 100, getName());
+            boolean payloadValid = data.length == UTF8_BOM.length
+                    || isValidUtf8(data, UTF8_BOM.length);
+            return payloadValid
+                    ? new DetectionResult("UTF-8", BOM_CONFIDENCE, getName())
+                    : null;
         }
 
-        ValidationResult validationResult = validateUTF8Sequences(data);
-        confidence += validationResult.confidence;
-
+        int confidence = validateUtf8Sequences(data);
         confidence += performStatisticalAnalysis(data);
         confidence += validateWithDecoder(data);
 
@@ -66,7 +74,12 @@ public class UTF8EncodingDetector extends AbstractEncodingDetector {
         return true;
     }
 
-    private ValidationResult validateUTF8Sequences(byte[] data) {
+    /**
+     * Counts structurally valid UTF-8 sequences and converts the ratio into points.
+     * Continuation bytes are checked starting at index 1: the leading byte itself is
+     * not a continuation byte.
+     */
+    private int validateUtf8Sequences(byte[] data) {
         int validSequences = 0;
         int totalSequences = 0;
         int i = 0;
@@ -74,15 +87,14 @@ public class UTF8EncodingDetector extends AbstractEncodingDetector {
         while (i < data.length) {
             totalSequences++;
 
-            byte b = data[i];
-
-            if ((b & 0x80) == 0) {
+            int firstByte = data[i] & 0xFF;
+            if (firstByte < 0x80) {
                 validSequences++;
                 i++;
                 continue;
             }
 
-            int sequenceLength = getUTF8SequenceLength(b);
+            int sequenceLength = getUtf8SequenceLength(firstByte);
 
             if (sequenceLength == 0 || i + sequenceLength > data.length) {
                 i++;
@@ -91,7 +103,7 @@ public class UTF8EncodingDetector extends AbstractEncodingDetector {
 
             boolean validSequence = true;
 
-            for (int j = 0; j < sequenceLength; j++) {
+            for (int j = 1; j < sequenceLength; j++) {
                 if ((data[i + j] & 0xC0) != 0x80) {
                     validSequence = false;
                     break;
@@ -105,10 +117,10 @@ public class UTF8EncodingDetector extends AbstractEncodingDetector {
             i += sequenceLength;
         }
 
-        int confidence = totalSequences > 0 ? (validSequences * 40) / totalSequences : 0;
-        return new ValidationResult(confidence, validSequences, totalSequences);
+        return totalSequences == 0
+                ? 0
+                : (validSequences * SEQUENCE_MAX_CONFIDENCE) / totalSequences;
     }
-
 
     private int performStatisticalAnalysis(byte[] data) {
         int multiByte = 0;
@@ -133,41 +145,39 @@ public class UTF8EncodingDetector extends AbstractEncodingDetector {
         return 0;
     }
 
+    /**
+     * Validates the whole input with a strict decoder. The three-argument
+     * {@link CharsetDecoder#decode(ByteBuffer, java.nio.CharBuffer, boolean)} does not
+     * throw on malformed input for {@link CodingErrorAction#REPORT}; the single-argument
+     * convenience method does, which makes this check effective.
+     */
     private int validateWithDecoder(byte[] data) {
+        return isValidUtf8(data, 0) ? DECODER_CONFIDENCE : 0;
+    }
+
+    private boolean isValidUtf8(byte[] data, int offset) {
+        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT);
+
         try {
-            CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
-                    .onMalformedInput(CodingErrorAction.REPORT)
-                    .onUnmappableCharacter(CodingErrorAction.REPORT);
-
-            ByteBuffer byteBuffer = ByteBuffer.wrap(data);
-            CharBuffer charBuffer = CharBuffer.allocate(data.length * 2);
-
-            decoder.decode(byteBuffer, charBuffer, true);
-            decoder.flush(charBuffer);
-
-            return 30;
-        } catch (Exception e) {
-            return 0;
+            decoder.decode(ByteBuffer.wrap(data, offset, data.length - offset));
+            return true;
+        } catch (CharacterCodingException e) {
+            return false;
         }
     }
 
-    private int getUTF8SequenceLength(byte firstByte) {
-        if ((firstByte & 0x80) == 0) return 1;        // 0xxxxxxx
-        if ((firstByte & 0xE0) == 0xC0) return 2;     // 110xxxxx
-        if ((firstByte & 0xF0) == 0xE0) return 3;     // 1110xxxx
-        if ((firstByte & 0xF8) == 0xF0) return 4;     // 11110xxx
-        return 0; // invalid sequence
-    }
-
-    private static class ValidationResult {
-        final int confidence;
-        final int validSequences;
-        final int totalSequences;
-
-        public ValidationResult(int confidence, int validSequences, int totalSequences) {
-            this.confidence = confidence;
-            this.validSequences = validSequences;
-            this.totalSequences = totalSequences;
-        }
+    /**
+     * Returns the length of the sequence introduced by the given leading byte, or 0
+     * for an invalid/overlong leading byte. Lead bytes C0, C1 (overlong encodings)
+     * and F5-FF (outside the Unicode range) are rejected here.
+     */
+    private int getUtf8SequenceLength(int firstByte) {
+        if (firstByte < 0x80) return 1;                    // 0xxxxxxx
+        if (firstByte >= 0xC2 && firstByte <= 0xDF) return 2; // 110xxxxx
+        if (firstByte >= 0xE0 && firstByte <= 0xEF) return 3; // 1110xxxx
+        if (firstByte >= 0xF0 && firstByte <= 0xF4) return 4; // 11110xxx
+        return 0;
     }
 }

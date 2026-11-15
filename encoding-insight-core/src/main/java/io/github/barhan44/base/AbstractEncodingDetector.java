@@ -25,7 +25,9 @@ public abstract class AbstractEncodingDetector implements EncodingDetector {
      */
     protected AbstractEncodingDetector(String name, String[] supportedEncodings) {
         this.name = name;
-        this.supportedEncodings = supportedEncodings;
+        this.supportedEncodings = supportedEncodings == null
+                ? new String[0]
+                : supportedEncodings.clone();
     }
 
     /**

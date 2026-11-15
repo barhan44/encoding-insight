@@ -3,6 +3,7 @@ package io.github.barhan44;
 import io.github.barhan44.model.DetectionResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -14,6 +15,9 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class EncodingDetectionIntegrationTest {
+
+    @TempDir
+    Path tempDir;
 
     private EncodingDetectionService service;
 
@@ -28,7 +32,7 @@ class EncodingDetectionIntegrationTest {
 
     @Test
     void testUTF8FileDetection() throws IOException {
-        Path tempFile = Files.createTempFile("integration_test_utf8", ".txt");
+        Path tempFile = tempDir.resolve("integration_test_utf8.txt");
         String content = "This is UTF-8 file.";
         Files.write(tempFile, content.getBytes(StandardCharsets.UTF_8));
 
@@ -37,14 +41,11 @@ class EncodingDetectionIntegrationTest {
         assertNotNull(result);
         assertEquals("UTF-8", result.getEncoding());
         assertTrue(result.getConfidence() > 70);
-
-
-        Files.delete(tempFile);
     }
 
     @Test
     void testWin1251FileDetection() throws IOException {
-        Path tempFile = Files.createTempFile("integration_test_cp1251", ".txt");
+        Path tempFile = tempDir.resolve("integration_test_cp1251.txt");
         String content = "Съешь ещё этих мягких французских булок да выпей же чаю!";
         Files.write(tempFile, content.getBytes(Charset.forName("Windows-1251")));
 
@@ -53,8 +54,6 @@ class EncodingDetectionIntegrationTest {
         assertTrue(Charset.isSupported("Windows-1251"));
         assertEquals("Windows-1251", result.getEncoding());
         assertTrue(result.getConfidence() >= 50);
-
-        Files.delete(tempFile);
     }
 
     @Test

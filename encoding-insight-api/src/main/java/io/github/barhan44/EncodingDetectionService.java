@@ -27,6 +27,12 @@ import java.util.List;
  * providing a streamlined API for encoding detection.
  */
 public class EncodingDetectionService {
+
+    /**
+     * Number of leading bytes sampled from a file for detection.
+     */
+    private static final int DEFAULT_SAMPLE_SIZE = 8192;
+
     private final CompositeEncodingDetector compositeDetector;
 
     /**
@@ -67,27 +73,29 @@ public class EncodingDetectionService {
 
     /**
      * Detects the encoding of a file given by its file path string.
-     * Reads up to a default number of bytes (e.g., 8192) from the file for detection.
+     * Reads at most {@value #DEFAULT_SAMPLE_SIZE} leading bytes from the file for
+     * detection; the rest of the file is not read into memory.
      *
      * @param filePath the path to the file as a string
      * @return the DetectionResult or null if undetectable
      * @throws IOException if there is an error reading the file
      */
     public DetectionResult detectFile(String filePath) throws IOException {
-        byte[] data = FileUtils.readFileBytes(filePath, 8192);
+        byte[] data = FileUtils.readFileBytes(filePath, DEFAULT_SAMPLE_SIZE);
         return detect(data);
     }
 
     /**
      * Detects the encoding of a file represented by a Path object.
-     * Reads up to a default number of bytes from the file for detection.
+     * Reads at most {@value #DEFAULT_SAMPLE_SIZE} leading bytes from the file for
+     * detection; the rest of the file is not read into memory.
      *
      * @param path the Path object referring to the file
      * @return the DetectionResult or null if undetectable
      * @throws IOException if there is an error reading the file
      */
     public DetectionResult detectFile(Path path) throws IOException {
-        byte[] data = FileUtils.readFileBytes(path, 8192);
+        byte[] data = FileUtils.readFileBytes(path, DEFAULT_SAMPLE_SIZE);
         return detect(data);
     }
 }

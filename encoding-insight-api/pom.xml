@@ -4,7 +4,7 @@
     <parent>
         <groupId>io.github.barhan44</groupId>
         <artifactId>encoding-insight</artifactId>
-        <version>1.0.0</version>
+        <version>1.0.1</version>
     </parent>
 
     <artifactId>encoding-insight-api</artifactId>
@@ -20,7 +20,7 @@
         <dependency>
             <groupId>io.github.barhan44</groupId>
             <artifactId>encoding-insight-core</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.1</version>
         </dependency>
     </dependencies>
 </project>
