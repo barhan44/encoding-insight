@@ -38,7 +38,7 @@ Note: the `io.github.barhan44.api` package is located in the **core** module. Th
 <dependency>
     <groupId>io.github.barhan44</groupId>
     <artifactId>encoding-insight-api</artifactId>
-    <version>1.0.1</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
