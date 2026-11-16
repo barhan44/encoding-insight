@@ -2,8 +2,8 @@
 
 ## Overview
 
-A modular Java library for detecting character encodings in byte arrays and files, with primary support for UTF-8 and
-Windows-1251 encodings. Designed with extensibility, clarity, and ease of use in mind.
+A modular Java library for detecting character encodings in byte arrays, input streams and files, with primary support
+for UTF-8 and Windows-1251 encodings. Designed with extensibility, clarity, and ease of use in mind.
 
 ***
 
@@ -13,9 +13,12 @@ Windows-1251 encodings. Designed with extensibility, clarity, and ease of use in
 - Composite detector that combines multiple detection strategies and returns the result with the highest confidence.
 - Factory for registering and creating detectors by name.
 - Lightweight and modular architecture separating detection logic from the client-facing API.
-- File utility that reads only a bounded prefix of a file — the whole file is never loaded when a smaller limit is sufficient.
-- Confidence levels (0–100) returned with detection results.
-- Unit and integration tests covering empty input, BOM handling, broken byte sequences and concurrent access.
+- Bounded sampling for files and streams: only a configurable prefix (32 KB by default) is read, never the whole file.
+- Binary-data heuristic that rejects NUL bytes and excessive control characters instead of misclassifying them.
+- Incomplete UTF-8 characters at the sample boundary are trimmed before detection.
+- Confidence levels (0–100) and a ready-to-use `java.nio.charset.Charset` returned with detection results.
+- Unit and integration tests covering empty input, BOM handling, broken byte sequences, binary data, large files and
+  concurrent access.
 - Simple facade for quick integration.
 
 ## Project Structure
@@ -35,7 +38,7 @@ Note: the `io.github.barhan44.api` package is located in the **core** module. Th
 <dependency>
     <groupId>io.github.barhan44</groupId>
     <artifactId>encoding-insight-api</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 
@@ -60,6 +63,7 @@ public class Main {
         DetectionResult result = service.detectFile("example.txt");
         if (result != null) {
             System.out.println("Detected encoding: " + result.getEncoding()
+                    + " (" + result.getCharset() + ")"
                     + " with confidence: " + result.getConfidence() + "%");
         } else {
             System.out.println("Encoding could not be determined.");
@@ -68,7 +72,19 @@ public class Main {
 }
 ```
 
-`detectFile` analyzes at most the first 8192 bytes of the file. To obtain all candidate results instead of the best one:
+`detectFile` analyzes at most the configured sample size (32 KB by default). The sample size can be changed through
+`new EncodingInsight(maxSampleBytes)` or `new EncodingDetectionService(composite, maxSampleBytes)`.
+
+Streams are supported without loading the whole stream or closing it:
+
+```java
+import java.io.InputStream;
+
+InputStream input = ...;
+DetectionResult result = service.detect(input); // reads at most 32 KB; caller closes the stream
+```
+
+To obtain all candidate results instead of the best one:
 
 ```java
 import io.github.barhan44.model.DetectionResult;
@@ -103,17 +119,23 @@ startup is still recommended.
 ## Limitations
 
 - Only UTF-8 and Windows-1251 are supported out of the box; UTF-16/UTF-32 are not implemented.
-- `detectFile` samples the first 8192 bytes of a file. Detection results for a file whose encoding changes or whose
-  distinguishing content appears after that prefix may differ from a full-file analysis.
+- `detectFile` and stream detection sample a configurable prefix (32768 bytes by default). Detection results for a
+  file whose encoding changes or whose distinguishing content appears after that prefix may differ from a full-file
+  analysis.
+- Binary data is rejected by a conservative heuristic (NUL bytes or an excessive C0 control-byte ratio). The heuristic
+  can be bypassed by passing bytes directly to a detector, but the composite detector and service apply it.
 - Detection is heuristic: confidence reflects accumulated signals, not a formal proof of the encoding.
 
 ## Testing
 
-Run the full build and all tests with Maven:
+Run the full build, all tests and the coverage report with Maven:
 
 ```bash
-mvn clean test
+mvn clean verify
 ```
+
+The JaCoCo report is generated in `encoding-insight-core/target/site/jacoco/index.html` and
+`encoding-insight-api/target/site/jacoco/index.html`.
 
 To run a single test class or method:
 

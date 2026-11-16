@@ -2,6 +2,7 @@ package io.github.barhan44.impl;
 
 import io.github.barhan44.base.AbstractEncodingDetector;
 import io.github.barhan44.model.DetectionResult;
+import io.github.barhan44.util.BinaryDataHeuristic;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -37,7 +38,9 @@ public class UTF8EncodingDetector extends AbstractEncodingDetector {
 
     @Override
     public boolean canDetect(byte[] data) {
-        return data != null && data.length > 0;
+        return data != null
+                && data.length > 0
+                && !BinaryDataHeuristic.isBinary(data);
     }
 
     @Override
@@ -46,7 +49,7 @@ public class UTF8EncodingDetector extends AbstractEncodingDetector {
             boolean payloadValid = data.length == UTF8_BOM.length
                     || isValidUtf8(data, UTF8_BOM.length);
             return payloadValid
-                    ? new DetectionResult("UTF-8", BOM_CONFIDENCE, getName())
+                    ? new DetectionResult("UTF-8", BOM_CONFIDENCE, getName(), StandardCharsets.UTF_8)
                     : null;
         }
 
@@ -55,7 +58,8 @@ public class UTF8EncodingDetector extends AbstractEncodingDetector {
         confidence += validateWithDecoder(data);
 
         if (confidence >= MIN_CONFIDENCE_THRESHOLD) {
-            return new DetectionResult("UTF-8", Math.min(confidence, 100), getName());
+            return new DetectionResult("UTF-8", Math.min(confidence, 100), getName(),
+                    StandardCharsets.UTF_8);
         }
 
         return null;

@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -142,6 +143,17 @@ class Win1251EncodingDetectorEdgeCaseTest {
         assertTrue(result.getConfidence() >= 70,
                 "long Russian text should receive the frequency bonus, actual confidence: "
                         + result.getConfidence());
+    }
+
+    @Test
+    void binaryDataWithNulBytesIsNotDetected() {
+        byte[] data = new byte[32];
+        Arrays.fill(data, (byte) 'A');
+        data[5] = 0x00;
+        data[6] = 0x01;
+
+        assertNull(detector.detect(data));
+        assertFalse(detector.canDetect(data));
     }
 
     @Test

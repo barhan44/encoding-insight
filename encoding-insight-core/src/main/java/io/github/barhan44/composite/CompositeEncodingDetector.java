@@ -2,6 +2,7 @@ package io.github.barhan44.composite;
 
 import io.github.barhan44.api.EncodingDetector;
 import io.github.barhan44.model.DetectionResult;
+import io.github.barhan44.util.BinaryDataHeuristic;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -140,7 +141,10 @@ public class CompositeEncodingDetector implements EncodingDetector {
 
     @Override
     public boolean canDetect(byte[] data) {
-        return !detectors.isEmpty() && data != null && data.length > 0;
+        return !detectors.isEmpty()
+                && data != null
+                && data.length > 0
+                && !BinaryDataHeuristic.isBinary(data);
     }
 
     @Override

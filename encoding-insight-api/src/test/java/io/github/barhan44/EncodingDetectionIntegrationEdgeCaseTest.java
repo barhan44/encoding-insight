@@ -1,11 +1,15 @@
 package io.github.barhan44;
 
 import io.github.barhan44.model.DetectionResult;
+import io.github.barhan44.utils.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.ByteArrayInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -101,17 +105,119 @@ class EncodingDetectionIntegrationEdgeCaseTest {
      * current behavior rather than desired behavior.
      */
     @Test
-    void fileLargerThanSampleSizeIsDetectedFromPrefixOnly() throws IOException {
+    void fileLargerThanConfiguredSampleSizeIsDetectedFromPrefixOnly() throws IOException {
         byte[] asciiPrefix = new byte[8192];
         Arrays.fill(asciiPrefix, (byte) 'A');
         Path file = write("large-prefix-ascii.txt",
                 concat(asciiPrefix, ALL_CYRILLIC_RUSSIAN.getBytes(CP1251)));
+        EncodingDetectionService configuredService =
+                new EncodingInsight(8192).getDetectionService();
+
+        DetectionResult result = configuredService.detectFile(file);
+
+        assertNotNull(result);
+        assertEquals(8192, configuredService.getMaxSampleBytes());
+        assertEquals("UTF-8", result.getEncoding(),
+                "only the configured 8192-byte prefix is analyzed");
+    }
+
+    @Test
+    void binaryFileIsRejected() throws IOException {
+        byte[] binary = new byte[128];
+        binary[0] = (byte) 'A';
+        binary[1] = 0x00;
+        binary[2] = 0x01;
+        Path file = write("binary.bin", binary);
+
+        assertNull(service.detectFile(file));
+        assertNull(service.detect(new ByteArrayInputStream(binary)));
+    }
+
+    @Test
+    void truncatedUtf8AtBufferBoundaryIsHandled() throws IOException {
+        byte[] utf8 = "Привет мир".getBytes(StandardCharsets.UTF_8);
+        Path file = write("utf8-boundary.txt", utf8);
+        EncodingDetectionService smallSampleService =
+                new EncodingInsight(5).getDetectionService();
+
+        DetectionResult fileResult = smallSampleService.detectFile(file);
+        DetectionResult streamResult = smallSampleService.detect(new ByteArrayInputStream(utf8));
+
+        assertNotNull(fileResult);
+        assertEquals("UTF-8", fileResult.getEncoding());
+        assertNotNull(streamResult);
+        assertEquals("UTF-8", streamResult.getEncoding());
+    }
+
+    @Test
+    void cp1251TextWithPunctuationIsNotRejectedAsBinary() throws IOException {
+        String text = "Привет — мир «тест»";
+        Path file = write("cp1251-punctuation.txt", text.getBytes(CP1251));
 
         DetectionResult result = service.detectFile(file);
 
         assertNotNull(result);
-        assertEquals("UTF-8", result.getEncoding(),
-                "only the first 8192 ASCII bytes are analyzed (documented limitation)");
+        assertEquals("Windows-1251", result.getEncoding());
+    }
+
+    @Test
+    void largeFileIsReadInBoundedFashion() throws IOException {
+        byte[] large = new byte[1024 * 1024 + 257];
+        Arrays.fill(large, (byte) 'A');
+        Path file = write("large.txt", large);
+
+        DetectionResult result = service.detectFile(file);
+
+        assertNotNull(result);
+        assertEquals("UTF-8", result.getEncoding());
+        assertEquals(1024, FileUtils.readFileBytes(file, 1024).length);
+    }
+
+    @Test
+    void streamReadingIsBounded() throws IOException {
+        byte[] large = new byte[1024 * 1024 + 257];
+        Arrays.fill(large, (byte) 'A');
+        CountingInputStream input =
+                new CountingInputStream(new ByteArrayInputStream(large));
+
+        DetectionResult result = service.detect(input);
+
+        assertNotNull(result);
+        assertEquals("UTF-8", result.getEncoding());
+        assertTrue(input.getBytesRead() <= EncodingDetectionService.DEFAULT_MAX_SAMPLE_BYTES,
+                "read " + input.getBytesRead() + " bytes, expected at most "
+                        + EncodingDetectionService.DEFAULT_MAX_SAMPLE_BYTES);
+    }
+
+    private static final class CountingInputStream extends FilterInputStream {
+
+        private long bytesRead;
+
+        private CountingInputStream(InputStream input) {
+            super(input);
+        }
+
+        @Override
+        public int read() throws IOException {
+            int value = super.read();
+            if (value != -1) {
+                bytesRead++;
+            }
+            return value;
+        }
+
+        @Override
+        public int read(byte[] buffer, int offset, int length) throws IOException {
+            int read = super.read(buffer, offset, length);
+            if (read > 0) {
+                bytesRead += read;
+            }
+            return read;
+        }
+
+        private long getBytesRead() {
+            return bytesRead;
+        }
     }
 
     @Test

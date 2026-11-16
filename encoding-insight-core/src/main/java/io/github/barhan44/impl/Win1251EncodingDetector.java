@@ -2,6 +2,7 @@ package io.github.barhan44.impl;
 
 import io.github.barhan44.base.AbstractEncodingDetector;
 import io.github.barhan44.model.DetectionResult;
+import io.github.barhan44.util.BinaryDataHeuristic;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -57,7 +58,9 @@ public class Win1251EncodingDetector extends AbstractEncodingDetector {
 
     @Override
     public boolean canDetect(byte[] data) {
-        return data != null && data.length > MIN_DATA_LENGTH;
+        return data != null
+                && data.length > MIN_DATA_LENGTH
+                && !BinaryDataHeuristic.isBinary(data);
     }
 
     @Override
@@ -86,7 +89,7 @@ public class Win1251EncodingDetector extends AbstractEncodingDetector {
         confidence += analyzeTrigrams(lowerText);
 
         if (confidence >= MIN_CONFIDENCE_THRESHOLD) {
-            return new DetectionResult("Windows-1251", Math.min(confidence, 100), getName());
+            return new DetectionResult("Windows-1251", Math.min(confidence, 100), getName(), CP1251);
         }
 
         return null;

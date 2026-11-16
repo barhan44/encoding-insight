@@ -61,29 +61,61 @@ public class FileUtils {
      */
     public static byte[] readFileBytes(Path path, int maxBytes) throws IOException {
         Objects.requireNonNull(path, "path");
-        if (maxBytes < 0) {
-            throw new IllegalArgumentException("maxBytes must not be negative: " + maxBytes);
-        }
+        validateMaxBytes(maxBytes);
         if (maxBytes == 0) {
             return new byte[0];
         }
 
         try (InputStream input = Files.newInputStream(path)) {
-            int bufferSize = Math.min(maxBytes, DEFAULT_BUFFER_SIZE);
-            ByteArrayOutputStream output = new ByteArrayOutputStream(bufferSize);
-            byte[] buffer = new byte[bufferSize];
-            int remaining = maxBytes;
+            return readBounded(input, maxBytes);
+        }
+    }
 
-            while (remaining > 0) {
-                int read = input.read(buffer, 0, Math.min(buffer.length, remaining));
-                if (read == -1) {
-                    break;
-                }
-                output.write(buffer, 0, read);
-                remaining -= read;
+    /**
+     * Reads up to {@code maxBytes} bytes from the provided stream.
+     * <p>
+     * The method reads at most {@code maxBytes} bytes and does <strong>not</strong>
+     * close the stream; the caller remains responsible for closing it. This makes the
+     * method suitable for reading a bounded sample from a larger stream without
+     * consuming or closing the rest of it.
+     * </p>
+     *
+     * @param input    the stream to read from
+     * @param maxBytes the maximum number of bytes to read (must be non-negative)
+     * @return a byte array containing up to {@code maxBytes} bytes
+     * @throws IOException              if an I/O error occurs reading the stream
+     * @throws IllegalArgumentException if {@code maxBytes} is negative
+     */
+    public static byte[] readStreamBytes(InputStream input, int maxBytes) throws IOException {
+        Objects.requireNonNull(input, "input");
+        validateMaxBytes(maxBytes);
+        if (maxBytes == 0) {
+            return new byte[0];
+        }
+        return readBounded(input, maxBytes);
+    }
+
+    private static byte[] readBounded(InputStream input, int maxBytes) throws IOException {
+        int bufferSize = Math.min(maxBytes, DEFAULT_BUFFER_SIZE);
+        ByteArrayOutputStream output = new ByteArrayOutputStream(bufferSize);
+        byte[] buffer = new byte[bufferSize];
+        int remaining = maxBytes;
+
+        while (remaining > 0) {
+            int read = input.read(buffer, 0, Math.min(buffer.length, remaining));
+            if (read == -1) {
+                break;
             }
+            output.write(buffer, 0, read);
+            remaining -= read;
+        }
 
-            return output.toByteArray();
+        return output.toByteArray();
+    }
+
+    private static void validateMaxBytes(int maxBytes) {
+        if (maxBytes < 0) {
+            throw new IllegalArgumentException("maxBytes must not be negative: " + maxBytes);
         }
     }
 }

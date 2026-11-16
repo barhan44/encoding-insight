@@ -23,14 +23,26 @@ public final class EncodingInsight {
     private final EncodingDetectionService detectionService;
 
     /**
-     * Constructs the EncodingInsight with default detectors (UTF-8 and Windows-1251).
+     * Constructs the EncodingInsight with default detectors (UTF-8 and Windows-1251)
+     * and the default sample size.
      */
     public EncodingInsight() {
+        this(EncodingDetectionService.DEFAULT_MAX_SAMPLE_BYTES);
+    }
+
+    /**
+     * Constructs the EncodingInsight with default detectors (UTF-8 and Windows-1251)
+     * and a custom maximum sample size for files and streams.
+     *
+     * @param maxSampleBytes maximum number of leading bytes sampled from files and streams
+     * @throws IllegalArgumentException if maxSampleBytes is not positive
+     */
+    public EncodingInsight(int maxSampleBytes) {
         CompositeEncodingDetector composite = new CompositeEncodingDetector("Default Detector");
         EncodingDetectorFactory factory = EncodingDetectorFactory.getInstance();
         composite.addDetector(factory.createDetector("UTF-8"));
         composite.addDetector(factory.createDetector("Windows-1251"));
-        this.detectionService = new EncodingDetectionService(composite);
+        this.detectionService = new EncodingDetectionService(composite, maxSampleBytes);
     }
 
     /**

@@ -115,6 +115,22 @@ class CompositeEncodingDetectorEdgeCaseTest {
     }
 
     @Test
+    void binaryDataIsRejected() {
+        byte[] data = new byte[64];
+        for (int i = 0; i < data.length; i++) {
+            data[i] = (byte) 'A';
+        }
+        data[10] = 0x00;
+        data[11] = 0x01;
+
+        CompositeEncodingDetector composite = createDefaultComposite();
+
+        assertFalse(composite.canDetect(data));
+        assertNull(composite.detect(data));
+        assertTrue(composite.detectAll(data).isEmpty());
+    }
+
+    @Test
     void concurrentDetectionOnSharedCompositeIsSafe() throws Exception {
         CompositeEncodingDetector composite = createDefaultComposite();
         byte[] data = "plain ascii text".getBytes(StandardCharsets.US_ASCII);
